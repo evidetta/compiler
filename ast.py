@@ -1,63 +1,67 @@
 from error import ParserErrorType, ParserError
 
 class Expression:
-    def semantic_check():
+    def visit(self):
         pass
 
-class SemanticError(Expression):
-
-    left = None
-
-    def __init__(self, parser_error):
-        self.parser_error = parser_error
-
-    def semantic_check(self):
-
-        print(self.parser_error)
-
-        if self.left is None:
-            print("end of semantic errors")
-        else:
-            self.left.semantic_check()
+    def resolve(self):
+        pass
 
 class BinaryExpression(Expression):
-    op = ""
-    left = None
-    right = None
 
     def __init__(self, op):
         self.op = op
 
-    def semantic_check(self):
+    def visit(self):
+        if self.left is not None:
+            self.left.visit()
+
+        print("BinaryExpression: %s" % self.op)
+
+        if self.right is not None:
+            self.right.visit()
+
+    def resolve(self):
         if self.left is None:
-            print("error: binary expression left is none")
-        else:
-            self.left.semantic_check()
+            raise Exception("l-value of operator is none")
 
         if self.right is None:
-            print("error: binary expression right is none")
+            raise Exception("r-value of operator is none")
+
+        if self.op == "and":
+            return self.left.resolve() and self.right.resolve()
+        elif self.op == "or":
+            return self.left.resolve() or self.right.resolve()
         else:
-            self.right.semantic_check()
+            raise Exception("binary operator is invalid")
 
 class UnitaryExpression(Expression):
-    op = ""
-    left = None
 
-    def __init__(self, op, left = None):
+    def __init__(self, op):
         self.op = op
-        self.left = left
 
-    def semantic_check(self):
+    def visit(self):
+        if self.left is not None:
+            self.left.visit()
+
+        print("UnitaryExpression: %s" % self.op)
+
+    def resolve(self):
         if self.left is None:
-            print("error: binary expression left is none")
+            raise Exception("l-value of operator is none")
+
+        if self.op == "not":
+            return not self.left.resolve()
         else:
-            self.left.semantic_check()
+            raise Exception("unitary operator is invalid")
 
 class Term(Expression):
-    value = False
 
     def __init__(self, value):
         self.value = value
 
-    def semantic_check(self):
-        pass
+    def visit(self):
+        print("Term: %s" % self.value)
+
+    def resolve(self):
+        return self.value

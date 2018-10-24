@@ -8,14 +8,15 @@ class ParserErrorType(Enum):
 
 
 class ParserError:
-    def __init__(self, msg, char_number, error_type = None, priority = 0):
+    def __init__(self, msg, char_number, token, error_type = None, priority = 0):
         self.msg = msg
         self.char_number = char_number
+        self.token = token
         self.error_type = error_type
         self.priority = priority
 
     def __str__(self):
-        return "error: %s at char %d" % (self.msg, self.char_number)
+        return "error: %s at char %d: got %s" % (self.msg, self.char_number, self.token)
 
     def __eq__(self, other):
         return self.msg == other.msg and self.char_number == other.char_number and self.error_type == other.error_type and self.priority == other.priority

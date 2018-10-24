@@ -28,7 +28,7 @@ class ParserState:
 
         while True:
             if self.tokens[self.index]['type'] == Tokens.ERROR:
-                self.errors.add(ParserError("syntax error", len(self.parsed_string), ParserErrorType.LEXICAL_ERROR, 0))
+                self.errors.add(ParserError("syntax error", len(self.parsed_string), self.tokens[self.index]['string'], ParserErrorType.LEXICAL_ERROR, 0))
                 self.index += 1
                 self.parsed_string += self.currentString()
             else:
@@ -45,112 +45,101 @@ class ParserState:
 
 def parse(tokens):
     parser_state = ParserState(tokens)
-    output = match_statement(parser_state)
-    output.semantic_check()
+    tree = match_statement(parser_state)
 
+    errors_by_type = [[e for e in parser_state.errors if e.error_type == v] for k, v in enumerate(ParserErrorType)]
+    for errors in errors_by_type:
+        for error in sorted(errors, key=lambda x: x.char_number):
+            print(error)
 
-#    errors_by_type = [[e for e in parser_state.errors if e.error_type == v] for k, v in enumerate(ParserErrorType)]
-#    for errors in errors_by_type:
-#        for error in sorted(errors, key=lambda x: x.char_number):
-#            print(error)
-
-
-    return output
+    return tree, errors_by_type
 
 def match_statement(parser_state):
     expression = match_expression(parser_state)
-    if expression is ast.SemanticError:
-        semantic_error = ast.SemanticError(ParserError("statement not matchedd", len(parser_state.parsed_string)))
-        semantic_error.left = expression
-        return semantic_error
+    if expression == None:
+        return None
     if parser_state.currentToken() != Tokens.EOF:
-        return ast.SemanticError(ParserError("statement not matched", len(parser_state.parsed_string)))
+        return None
     return expression
 
 def match_expression(parser_state):
     parser_state.checkpoint()
     and_expression = match_and_expression(parser_state)
-    if and_expression is not ast.SemanticError:
+    if and_expression != None:
         return and_expression
     parser_state.backtrack()
 
     parser_state.checkpoint()
     or_expression = match_or_expression(parser_state)
-    if or_expression is not ast.SemanticError:
+    if or_expression != None:
         return or_expression
     parser_state.backtrack()
 
     term = match_term(parser_state)
-    if term is not ast.SemanticError:
+    if term != None:
         return term
-    return ast.SemanticError(ParserError("expression not matched", len(parser_state.parsed_string)))
+    return None
 
 def match_and_expression(parser_state):
     and_expression = ast.BinaryExpression("and")
     term = match_term(parser_state)
-    if term is ast.SemanticError:
-        semantic_error = ast.SemanticError(ParserError("and_expression not matched", len(parser_state.parsed_string)))
-        semantic_error.left = term
-        return semantic_error
+    if term == None:
+        return None
     and_expression.left = term
     if parser_state.currentToken() != Tokens.AND:
-        return ast.SemanticError(ParserError("and_expression not matched", len(parser_state.parsed_string)))
+        return None
     parser_state.step()
     expression = match_expression(parser_state)
-    if expression is ast.SemanticError:
-        semantic_error = ast.SemanticError(ParserError("and_expression not matched", len(parser_state.parsed_string)))
-        semantic_error.left = term
-        return semantic_error
+    if expression == None:
+        return None
     and_expression.right = expression
     return and_expression
 
 def match_or_expression(parser_state):
     or_expression = ast.BinaryExpression("or")
     term = match_term(parser_state)
-    if term is ast.SemanticError:
-        semantic_error = ast.SemanticError(ParserError("or_expression not matched", len(parser_state.parsed_string)))
-        semantic_error.left = term
-        return semantic_error
+    if term == None:
+        return None
     or_expression.left = term
     if parser_state.currentToken() != Tokens.OR:
-        return ast.SemanticError(ParserError("or_expression not matched", len(parser_state.parsed_string)))
+        return None
     parser_state.step()
     expression = match_expression(parser_state)
-    if expression is ast.SemanticError:
-        semantic_error = ast.SemanticError(ParserError("or_expression not matched", len(parser_state.parsed_string)))
-        semantic_error.left = expression
-        return semantic_error
+    if expression == None:
+        return None
     or_expression.right = expression
     return or_expression
 
 def match_term(parser_state):
     value = match_value_term(parser_state)
-    if value is not ast.SemanticError:
+    if value != None:
         return value
     value = match_negated_term(parser_state)
-    if value is not ast.SemanticError:
+    if value != None:
         return value
-    return ast.SemanticError(ParserError("term not matched", len(parser_state.parsed_string)))
+    parser_state.errors.add(ParserError("missing term", len(parser_state.parsed_string), parser_state.currentString(), ParserErrorType.SEMANTIC_ERROR, 2))
+    return None
 
 def match_negated_term(parser_state):
     match_whitespace(parser_state)
     if parser_state.currentToken() != Tokens.NOT:
-        ast.SemanticError(ParserError("negated term not matched", len(parser_state.parsed_string)))
+        return None
     parser_state.step()
     term = match_term(parser_state)
-    if term is ast.SemanticError:
-        semantic_error = ast.SemanticError(ParserError("negated term not matched", len(parser_state.parsed_string)))
-        semantic_error.left = term
-    return ast.UnitaryExpression("not", term)
+    if term == None:
+        return None
+    negated_term = ast.UnitaryExpression("not")
+    negated_term.left = term
+    return negated_term
 
 def match_value_term(parser_state):
     value = match_true_value(parser_state)
-    if value is not ast.SemanticError:
+    if value != None:
         return value
     value = match_false_value(parser_state)
-    if value is not ast.SemanticError:
+    if value != None:
         return value
-    return ast.SemanticError(ParserError("value term not matched", len(parser_state.parsed_string)))
+    return None
 
 def match_true_value(parser_state):
     if parser_state.currentToken() == Tokens.TRUE:
@@ -162,7 +151,7 @@ def match_true_value(parser_state):
             parser_state.step()
             match_whitespace(parser_state)
             return ast.Term(True)
-    return ast.SemanticError(ParserError("true not matched", len(parser_state.parsed_string)))
+    return None
 
 def match_false_value(parser_state):
     if parser_state.currentToken() == Tokens.FALSE:
@@ -174,7 +163,7 @@ def match_false_value(parser_state):
             parser_state.step()
             match_whitespace(parser_state)
             return ast.Term(False)
-    return ast.SemanticError(ParserError("false not matched", len(parser_state.parsed_string)))
+    return None
 
 def match_whitespace(parser_state):
     if parser_state.currentToken() != Tokens.WHITESPACE:
