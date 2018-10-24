@@ -1,0 +1,18 @@
+Statement: Expression EOF
+Expression: OrExpression | AndExpression | Term
+OrExpression: Term OR Expression
+AndExpression: Term OR Expression
+Term: ValueTerm | NegatedTerm
+NegatedTerm: NOT Term | Whitespace NOT Term
+ValueTerm: TrueValue | FalseValue
+TrueValue: TRUE | Whitespace TRUE | TRUE Whitespace | Whitespace TRUE Whitespace
+FalseValue: FALSE | Whitespace FALSE | FALSE Whitespace | Whitespace FALSE Whitespace
+Whitespace: WHITESPACE | WHITESPACE Whitespace
+
+
+Expression: OrExpression | AndExpression | Term
+OrExpression: Term OR Expression
+AndExpression: Term OR Expression
+Term: Value | NegatedTerm
+NegatedTerm: NOT Term
+Value: TRUE | FALSE
